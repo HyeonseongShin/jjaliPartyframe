@@ -177,6 +177,8 @@ eventFrame:RegisterEvent("UNIT_MAXPOWER")
 eventFrame:RegisterEvent("UNIT_CONNECTION")
 eventFrame:RegisterEvent("UNIT_FLAGS")
 eventFrame:RegisterEvent("UNIT_AURA")
+eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")  -- 전투 진입
+eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")   -- 전투 종료
 
 eventFrame:SetScript("OnEvent", function(_, event, arg1)
     if event == "PLAYER_LOGIN" then
@@ -186,6 +188,11 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
         or event == "PLAYER_ROLES_ASSIGNED"
         or event == "ROLE_CHANGED_INFORM" then
         CP:UpdateAll()
+    elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+        -- 전투 상태 변화 → 5분 초과 버프 표시 여부 갱신
+        for _, f in pairs(CP.frames) do
+            CP:UpdateAuras(f)
+        end
     elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH"
         or event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER"
         or event == "UNIT_CONNECTION"   or event == "UNIT_FLAGS" then

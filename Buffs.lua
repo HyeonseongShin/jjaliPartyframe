@@ -45,6 +45,8 @@ function CP:UpdateAuras(f)
     local size   = db.auraSize
 
     -- ── 버프 ──
+    -- 5분(300초) 초과 또는 영구(duration==0) 버프는 전투 중에만 표시
+    local inCombat = UnitAffectingCombat("player")
     local buffCount = 0
     local i = 1
     while buffCount < db.maxBuffs do
@@ -52,7 +54,8 @@ function CP:UpdateAuras(f)
         if not data then break end
         i = i + 1
 
-        if data.icon then
+        local isLongBuff = (data.duration == 0 or data.duration > 300)
+        if data.icon and (inCombat or not isLongBuff) then
             buffCount = buffCount + 1
             local icon = GetIcon(f.auraFrame, f.buffIcons, buffCount, false)
             icon:SetPoint("TOPLEFT", f.auraFrame, "TOPLEFT",
