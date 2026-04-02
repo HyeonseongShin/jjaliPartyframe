@@ -217,20 +217,21 @@ end
 function CP:UpdateFrame(f)
     local unit = f.unit
     if not UnitExists(unit) then
-        f:Hide()
+        if not InCombatLockdown() then f:Hide() end
         return
     end
-    f:Show()
+    if not InCombatLockdown() then f:Show() end
 
     local isDead    = UnitIsDeadOrGhost(unit)
     local isOffline = not UnitIsConnected(unit)
 
-    -- HP (secret value → string.format("%d") → tonumber 으로 일반 숫자 추출 후 계산)
-    local hp    = tonumber(string.format("%d", UnitHealth(unit)))    or 0
-    local hpMax = tonumber(string.format("%d", UnitHealthMax(unit))) or 1
-    local hpPct = hpMax > 0 and (hp / hpMax) or 0  -- 0~1 범위
-    f.hpBar:SetMinMaxValues(0, hpMax)
-    f.hpBar:SetValue(hp)
+    -- HP: raw secret value → SetValue (엔진이 내부 float으로 변환)
+    --     GetValue/GetMinMaxValues 는 일반 Lua 숫자 반환 → 산술 가능
+    f.hpBar:SetMinMaxValues(0, UnitHealthMax(unit))
+    f.hpBar:SetValue(UnitHealth(unit))
+    local barCur        = f.hpBar:GetValue()
+    local _, barMax     = f.hpBar:GetMinMaxValues()
+    local hpPct         = (barMax and barMax > 0) and (barCur / barMax) or 0
     f.hpBar:SetStatusBarColor(self:HPColor(hpPct))
 
     -- 이름 (UTF-8 문자 경계에서 자르기)

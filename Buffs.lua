@@ -54,7 +54,13 @@ function CP:UpdateAuras(f)
         if not data then break end
         i = i + 1
 
-        local isLongBuff = (data.duration == 0 or data.duration > 300)
+        -- data.duration 도 secret number 일 수 있어 > 비교가 에러를 냄
+        -- pcall 로 감싸고, 실패 시 짧은 버프로 간주하여 항상 표시
+        local isLongBuff = false
+        local ok, res = pcall(function()
+            return data.duration == 0 or data.duration > 300
+        end)
+        if ok then isLongBuff = res end
         if data.icon and (inCombat or not isLongBuff) then
             buffCount = buffCount + 1
             local icon = GetIcon(f.auraFrame, f.buffIcons, buffCount, false)

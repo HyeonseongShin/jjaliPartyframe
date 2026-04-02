@@ -61,11 +61,9 @@ CP.container = nil
 CP.locked    = false
 
 -- ─── 헬퍼 ────────────────────────────────────────────────────────────────────
--- pct: 0~100 (UnitHealthPercent 반환값 그대로 사용 — Secret Value 산술 연산 금지)
--- pct: UnitHealthPercent 반환값 (Midnight에서 0~1 소수)
--- string.format("%.4f") 로 secret value → 일반 숫자 문자열 변환 후 비교
+-- pct: 0~1 일반 float (hpBar:GetValue() / GetMinMaxValues() 계산 결과)
 function CP:HPColor(pct)
-    local val = tonumber(string.format("%.4f", pct)) or 1.0
+    local val = pct or 0
     if val > 0.6 then return unpack(self.colors.hp.high)
     elseif val > 0.3 then return unpack(self.colors.hp.mid)
     else return unpack(self.colors.hp.low)
