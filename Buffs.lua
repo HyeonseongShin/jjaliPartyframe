@@ -61,7 +61,7 @@ function CP:UpdateAuras(f)
             return data.duration == 0 or data.duration > 300
         end)
         if ok then isLongBuff = res end
-        if data.icon and (inCombat or not isLongBuff) then
+        if data.icon and (not inCombat or not isLongBuff) then
             buffCount = buffCount + 1
             local icon = GetIcon(f.auraFrame, f.buffIcons, buffCount, false)
             icon:SetPoint("TOPLEFT", f.auraFrame, "TOPLEFT",
