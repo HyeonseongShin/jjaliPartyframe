@@ -225,19 +225,22 @@ function CP:UpdateFrame(f)
     local isDead    = UnitIsDeadOrGhost(unit)
     local isOffline = not UnitIsConnected(unit)
 
-    -- HP: raw secret value → SetValue (엔진이 내부 float으로 변환)
-    --     GetValue/GetMinMaxValues 가 secret number 를 반환할 경우 산술 에러로
-    --     함수가 abort 되므로 pcall 로 감싸 안전하게 처리
+    -- HP 바: secret value를 엔진에 직접 전달 (바 채움은 정상 작동)
     f.hpBar:SetMinMaxValues(0, UnitHealthMax(unit))
     f.hpBar:SetValue(UnitHealth(unit))
-    local hpPct = 1.0
-    local ok, result = pcall(function()
-        local cur = f.hpBar:GetValue()
-        local _, max = f.hpBar:GetMinMaxValues()
-        return (max and max > 0) and (cur / max) or 1.0
-    end)
-    if ok then hpPct = result end
-    f.hpBar:SetStatusBarColor(self:HPColor(hpPct))
+
+    -- HP 퍼센트: FontString 라운더링
+    -- SetFormattedText(C-side)로 secret → 문자열 변환 → GetText()로 일반 문자열 회수
+    local hpPct = nil
+    f.hpText:SetFormattedText("%d%%", UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))
+
+    local raw = tonumber(f.hpText:GetText())
+    if raw then hpPct = raw end
+
+    -- HP 바 색상
+    if hpPct then
+        f.hpBar:SetStatusBarColor(self:HPColor(hpPct))
+    end
 
     -- 이름 (UTF-8 문자 경계에서 자르기)
     local name = UnitName(unit) or unit
@@ -258,8 +261,8 @@ function CP:UpdateFrame(f)
     elseif isOffline then
         f.hpText:SetText("오프")
         f.hpText:SetTextColor(0.5, 0.5, 0.5)
-    else
-        f.hpText:SetText(string.format("%d%%", math.floor(hpPct * 100)))
+    elseif hpPct then
+        f.hpText:SetText(string.format("%d%%", hpPct))
         f.hpText:SetTextColor(1, 1, 1)
     end
 
@@ -291,7 +294,7 @@ function CP:UpdateFrame(f)
         f.roleIcon:Hide()
     end
 
-    self:UpdateAuras(f)
+    pcall(self.UpdateAuras, self, f)
 end
 
 function CP:UpdateAll()

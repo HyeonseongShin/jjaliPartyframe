@@ -93,10 +93,13 @@ function CP:UpdateAuras(f)
             icon.tex:SetTexture(data.icon)
             icon.count:SetText("")  -- applications 도 secret number라 비교 불가
 
-            -- 디버프 종류별 테두리 색상
+            -- 디버프 종류별 테두리 색상 (dispelName 이 secret value 일 수 있음)
             if icon.border then
-                local dc = self.colors.debuff[data.dispelName]
-                         or self.colors.debuff.default
+                local dc = self.colors.debuff.default
+                local ok, res = pcall(function()
+                    return self.colors.debuff[data.dispelName]
+                end)
+                if ok and res then dc = res end
                 icon.border:SetColorTexture(unpack(dc))
             end
 
