@@ -38,7 +38,7 @@ end
 function OPT:Build()
     local panel = CreateFrame("Frame", "jjaliPartyFrameOptions", UIParent,
                               "BackdropTemplate")
-    panel:SetSize(320, 420)
+    panel:SetSize(320, 460)
     panel:SetPoint("CENTER")
     panel:SetFrameStrata("DIALOG")
     panel:SetMovable(true)
@@ -105,12 +105,12 @@ function OPT:Build()
     posLabel:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, y)
     y = y - 26
 
-    local btnUnlock = MakeButton(panel, 88, 26, "🔓 잠금 해제", function()
+    local btnUnlock = MakeButton(panel, 88, 26, "잠금 해제", function()
         CP:SetLocked(false)
     end)
     btnUnlock:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, y)
 
-    local btnLock = MakeButton(panel, 88, 26, "🔒 잠금", function()
+    local btnLock = MakeButton(panel, 88, 26, "잠금", function()
         CP:SetLocked(true)
     end)
     btnLock:SetPoint("TOPLEFT", panel, "TOPLEFT", 112, y)
