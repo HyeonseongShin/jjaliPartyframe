@@ -4,48 +4,46 @@
 jjaliPartyFrame = {}
 local CP = jjaliPartyFrame
 
--- ─── 설정 ───────────────────────────────────────────────────────────────────
+-- ─── 기본 설정 ────────────────────────────────────────────────────────────────
 CP.db = {
     width    = 200,
-    height   = 62,
-    padding  = 5,     -- 프레임 간 간격
-    anchorX  = 20,    -- UIParent TOPLEFT 기준 X 오프셋 (양수 = 오른쪽)
-    anchorY  = -200,  -- UIParent TOPLEFT 기준 Y 오프셋 (음수 = 아래쪽)
+    height   = 52,
+    padding  = 4,
+    layout   = "vertical",  -- "vertical" | "horizontal"
 
-    -- 클릭 힐 스펠 (본인 클래스에 맞게 수정)
+    -- 한국어 클라이언트 기준 스펠명 사용 (영문 클라이언트는 옵션 패널에서 변경)
     spells = {
-        left   = "Flash Heal",          -- 왼쪽 클릭
-        right  = "Renew",               -- 오른쪽 클릭
-        middle = "Power Word: Shield",  -- 미들 클릭
+        left   = "재성장",       -- Regrowth
+        right  = "재생",         -- Rejuvenation
+        middle = "치유의 손길",  -- Healing Touch
     },
 
-    -- 버프/디버프 아이콘 설정
-    maxBuffs   = 8,
-    maxDebuffs = 4,
+    maxBuffs   = 6,
+    maxDebuffs = 3,
     auraSize   = 16,
 }
 
--- ─── 색상 정의 ───────────────────────────────────────────────────────────────
+-- ─── 색상 정의 ────────────────────────────────────────────────────────────────
 CP.colors = {
     hp = {
-        high = { 0.2, 0.8, 0.3 },   -- 60% 이상
-        mid  = { 0.9, 0.8, 0.1 },   -- 30~60%
-        low  = { 0.9, 0.2, 0.2 },   -- 30% 미만
+        high = { 0.2, 0.8, 0.3 },
+        mid  = { 0.9, 0.8, 0.1 },
+        low  = { 0.9, 0.2, 0.2 },
     },
     power = {
-        MANA        = { 0.2, 0.4, 0.9 },
-        RAGE        = { 0.8, 0.1, 0.1 },
-        FOCUS       = { 0.8, 0.6, 0.1 },
-        ENERGY      = { 0.9, 0.9, 0.1 },
-        RUNIC_POWER = { 0.0, 0.8, 1.0 },
-        FURY        = { 0.7, 0.1, 0.9 },
-        PAIN        = { 1.0, 0.6, 0.0 },
-        MAELSTROM   = { 0.0, 0.6, 1.0 },
-        INSANITY    = { 0.4, 0.0, 0.8 },
-        SOUL_SHARDS = { 0.5, 0.1, 0.6 },
-        ASTRAL      = { 0.3, 0.8, 0.5 },
+        MANA           = { 0.2, 0.4, 0.9 },
+        RAGE           = { 0.8, 0.1, 0.1 },
+        FOCUS          = { 0.8, 0.6, 0.1 },
+        ENERGY         = { 0.9, 0.9, 0.1 },
+        RUNIC_POWER    = { 0.0, 0.8, 1.0 },
+        FURY           = { 0.7, 0.1, 0.9 },
+        PAIN           = { 1.0, 0.6, 0.0 },
+        MAELSTROM      = { 0.0, 0.6, 1.0 },
+        INSANITY       = { 0.4, 0.0, 0.8 },
+        SOUL_SHARDS    = { 0.5, 0.1, 0.6 },
+        ASTRAL         = { 0.3, 0.8, 0.5 },
         ARCANE_CHARGES = { 0.2, 0.6, 1.0 },
-        COMBO_POINTS = { 1.0, 0.8, 0.1 },
+        COMBO_POINTS   = { 1.0, 0.8, 0.1 },
     },
     debuff = {
         Magic   = { 0.2, 0.6, 1.0 },
@@ -55,6 +53,12 @@ CP.colors = {
         default = { 0.8, 0.0, 0.0 },
     },
 }
+
+-- ─── 상태 ─────────────────────────────────────────────────────────────────────
+CP.units     = { "player", "party1", "party2", "party3", "party4" }
+CP.frames    = {}
+CP.container = nil
+CP.locked    = false
 
 -- ─── 헬퍼 ────────────────────────────────────────────────────────────────────
 function CP:HPColor(pct)
@@ -67,55 +71,85 @@ end
 function CP:PowerColor(token)
     local c = self.colors.power[token]
     if c then return unpack(c) end
-    return 0.2, 0.4, 0.9  -- 기본: 파란색
+    return 0.2, 0.4, 0.9
 end
 
--- ─── 유닛 목록 ───────────────────────────────────────────────────────────────
-CP.units  = { "player", "party1", "party2", "party3", "party4" }
-CP.frames = {}  -- unit -> frame
-CP.locked = false  -- 프레임 잠금 상태
-
--- ─── SavedVariables 초기화 ───────────────────────────────────────────────────
+-- ─── SavedVariables ───────────────────────────────────────────────────────────
 function CP:InitDB()
-    if not jjaliPartyFrameDB then
-        jjaliPartyFrameDB = { locked = false, positions = {} }
+    if not jjaliPartyFrameDB then jjaliPartyFrameDB = {} end
+    local sv = jjaliPartyFrameDB
+
+    self.locked = sv.locked or false
+    if sv.layout   then self.db.layout   = sv.layout   end
+    if sv.width    then self.db.width    = sv.width    end
+    if sv.height   then self.db.height   = sv.height   end
+    if sv.maxBuffs   then self.db.maxBuffs   = sv.maxBuffs   end
+    if sv.maxDebuffs then self.db.maxDebuffs = sv.maxDebuffs end
+    if sv.spells then
+        for k, v in pairs(sv.spells) do self.db.spells[k] = v end
     end
-    self.locked = jjaliPartyFrameDB.locked
 end
 
--- 현재 프레임 위치 저장
-function CP:SavePosition(unit, f)
-    local point, _, _, x, y = f:GetPoint()
-    jjaliPartyFrameDB.positions[unit] = { point = point, x = x, y = y }
+function CP:SaveDB()
+    local sv = jjaliPartyFrameDB
+    sv.locked     = self.locked
+    sv.layout     = self.db.layout
+    sv.width      = self.db.width
+    sv.height     = self.db.height
+    sv.maxBuffs   = self.db.maxBuffs
+    sv.maxDebuffs = self.db.maxDebuffs
+    sv.spells     = {}
+    for k, v in pairs(self.db.spells) do sv.spells[k] = v end
 end
 
--- 저장된 위치 불러오기
-function CP:LoadPosition(unit, f)
-    local pos = jjaliPartyFrameDB.positions[unit]
+function CP:SaveContainerPos()
+    if not self.container then return end
+    local point, _, _, x, y = self.container:GetPoint()
+    jjaliPartyFrameDB.position = { point = point, x = x, y = y }
+end
+
+function CP:LoadContainerPos()
+    local pos = jjaliPartyFrameDB and jjaliPartyFrameDB.position
     if pos then
-        f:ClearAllPoints()
-        f:SetPoint(pos.point, UIParent, pos.point, pos.x, pos.y)
+        self.container:ClearAllPoints()
+        self.container:SetPoint(pos.point, UIParent, pos.point, pos.x, pos.y)
         return true
     end
     return false
 end
 
--- 잠금 상태 토글
+-- ─── 잠금 ─────────────────────────────────────────────────────────────────────
 function CP:SetLocked(locked)
     self.locked = locked
     jjaliPartyFrameDB.locked = locked
-    for _, f in pairs(self.frames) do
-        if f.lockOverlay then
-            f.lockOverlay:SetShown(not locked)
+    if self.container and self.container.handle then
+        local h = self.container.handle
+        if locked then
+            h.bg:SetColorTexture(0.08, 0.08, 0.08, 0.95)
+            h.label:SetTextColor(0.6, 0.6, 0.6)
+        else
+            h.bg:SetColorTexture(1.0, 0.55, 0.0, 0.9)
+            h.label:SetTextColor(0.05, 0.05, 0.05)
         end
     end
-    local state = locked and "|cffff4444잠금|r" or "|cff44ff44잠금 해제|r"
-    print("|cffff9900jjali's Party Frame:|r 프레임 " .. state)
+    -- 옵션 패널 버튼 상태 갱신
+    if CP.Options and CP.Options.RefreshLockButtons then
+        CP.Options:RefreshLockButtons()
+    end
 end
 
--- ─── 이벤트 핸들러 ───────────────────────────────────────────────────────────
-local eventFrame = CreateFrame("Frame")
+-- ─── 레이아웃 변경 ───────────────────────────────────────────────────────────
+function CP:SetLayout(layout)
+    self.db.layout = layout
+    jjaliPartyFrameDB.layout = layout
+    self:LayoutFrames()
+    if CP.Options and CP.Options.RefreshLayoutButtons then
+        CP.Options:RefreshLayoutButtons()
+    end
+end
 
+-- ─── 이벤트 ──────────────────────────────────────────────────────────────────
+local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
@@ -132,18 +166,15 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
     if event == "PLAYER_LOGIN" then
         CP:InitDB()
         CP:InitFrames()
-
     elseif event == "GROUP_ROSTER_UPDATE"
         or event == "PLAYER_ROLES_ASSIGNED"
         or event == "ROLE_CHANGED_INFORM" then
         CP:UpdateAll()
-
     elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH"
         or event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER"
-        or event == "UNIT_CONNECTION" or event == "UNIT_FLAGS" then
+        or event == "UNIT_CONNECTION"   or event == "UNIT_FLAGS" then
         local f = CP.frames[arg1]
         if f then CP:UpdateFrame(f) end
-
     elseif event == "UNIT_AURA" then
         local f = CP.frames[arg1]
         if f then CP:UpdateAuras(f) end
@@ -154,25 +185,23 @@ end)
 SLASH_JJALIPARTYFRAME1 = "/jjali"
 SLASH_JJALIPARTYFRAME2 = "/jpf"
 SlashCmdList["JJALIPARTYFRAME"] = function(msg)
-    if msg == "lock" then
+    if msg == "" or msg == nil then
+        -- 옵션 패널 열기
+        if CP.Options then CP.Options:Toggle() end
+    elseif msg == "lock" then
         CP:SetLocked(true)
     elseif msg == "unlock" then
         CP:SetLocked(false)
     elseif msg == "reset" then
-        jjaliPartyFrameDB.positions = {}
-        for _, f in pairs(CP.frames) do
-            f:ClearAllPoints()
-        end
-        CP:LayoutFrames()
-        print("|cffff9900jjali's Party Frame:|r 프레임 위치를 초기화했습니다.")
-    elseif msg == "reload" then
-        CP:UpdateAll()
-        print("|cffff9900jjali's Party Frame:|r 프레임을 새로고침했습니다.")
+        jjaliPartyFrameDB.position = nil
+        CP.container:ClearAllPoints()
+        CP.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -200)
+        print("|cffff9900jjali's Party Frame:|r 위치를 초기화했습니다.")
     else
         print("|cffff9900jjali's Party Frame 명령어:|r")
-        print("  /jjali lock    - 프레임 위치 잠금")
-        print("  /jjali unlock  - 프레임 위치 잠금 해제 (드래그 가능)")
-        print("  /jjali reset   - 프레임 위치 초기화")
-        print("  /jjali reload  - 프레임 새로고침")
+        print("  /jjali         - 옵션 패널 열기")
+        print("  /jjali lock    - 프레임 잠금")
+        print("  /jjali unlock  - 프레임 잠금 해제")
+        print("  /jjali reset   - 위치 초기화")
     end
 end

@@ -1,111 +1,150 @@
 -- jjaliPartyFrame/Frames.lua
--- 파티 프레임 생성 및 업데이트
+-- 컨테이너 + 유닛 프레임 생성 및 업데이트
 
 local CP = jjaliPartyFrame
 
--- 역할 아이콘 텍스처 좌표 (Interface\LFGFrame\UI-LFG-ICON-ROLES)
 local ROLE_COORDS = {
     TANK    = { 0,   0.5, 0,   0.5 },
     HEALER  = { 0.5, 1.0, 0,   0.5 },
     DAMAGER = { 0,   0.5, 0.5, 1.0 },
 }
 
--- ─── 단일 유닛 프레임 생성 ────────────────────────────────────────────────────
+local HANDLE_H = 16  -- 드래그 핸들 높이
+
+-- ─── 컨테이너 크기 계산 ───────────────────────────────────────────────────────
+local function ContainerSize()
+    local db   = CP.db
+    local n    = #CP.units
+    local aura = db.auraSize + 6
+    local fh   = db.height + aura  -- 버프/디버프 포함 유닛 프레임 총 높이
+
+    if db.layout == "horizontal" then
+        local w = n * db.width + (n - 1) * db.padding
+        return w, HANDLE_H + fh
+    else
+        local h = HANDLE_H + n * fh + (n - 1) * db.padding
+        return db.width, h
+    end
+end
+
+-- ─── 컨테이너 생성 ────────────────────────────────────────────────────────────
+local function CreateContainer()
+    local w, h = ContainerSize()
+    local c = CreateFrame("Frame", "jjaliPartyFrameContainer", UIParent)
+    c:SetSize(w, h)
+    c:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -200)
+    c:SetFrameStrata("MEDIUM")
+    c:SetMovable(true)
+    c:SetClampedToScreen(true)
+
+    -- 컨테이너 배경 (투명 — 핸들만 보임)
+    c:EnableMouse(false)
+
+    -- ── 드래그 핸들 ──
+    local handle = CreateFrame("Frame", nil, c)
+    handle:SetPoint("TOPLEFT",  c, "TOPLEFT",  0,  0)
+    handle:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0,  0)
+    handle:SetHeight(HANDLE_H)
+    handle:EnableMouse(true)
+
+    local hbg = handle:CreateTexture(nil, "BACKGROUND")
+    hbg:SetAllPoints()
+    hbg:SetColorTexture(0.08, 0.08, 0.08, 0.95)
+    handle.bg = hbg
+
+    local label = handle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    label:SetPoint("CENTER", handle, "CENTER")
+    label:SetText("jjali's Party Frame")
+    label:SetTextColor(0.6, 0.6, 0.6)
+    handle.label = label
+
+    -- 드래그 동작
+    handle:SetScript("OnMouseDown", function(self, btn)
+        if btn == "LeftButton" and not InCombatLockdown() and not CP.locked then
+            c:StartMoving()
+        end
+    end)
+    handle:SetScript("OnMouseUp", function()
+        c:StopMovingOrSizing()
+        CP:SaveContainerPos()
+    end)
+
+    c.handle = handle
+    return c
+end
+
+-- ─── 유닛 프레임 생성 ─────────────────────────────────────────────────────────
 local function CreateUnitFrame(unit)
     local db = CP.db
+    local c  = CP.container
 
-    -- SecureActionButtonTemplate: 전투 중 클릭 힐 가능
-    local f = CreateFrame("Button", "jjaliPartyFrameFrame_" .. unit,
-                          UIParent, "SecureActionButtonTemplate")
+    local f = CreateFrame("Button", "jjaliPartyUnitFrame_" .. unit,
+                          c, "SecureActionButtonTemplate")
     f:SetSize(db.width, db.height)
     f:SetFrameStrata("MEDIUM")
     f:RegisterForClicks("AnyUp")
 
-    -- 클릭 힐 어트리뷰트
-    f:SetAttribute("unit",   unit)
-    f:SetAttribute("*type1", "spell")
+    -- 클릭 힐
+    f:SetAttribute("unit",    unit)
+    f:SetAttribute("*type1",  "spell")
     f:SetAttribute("*spell1", db.spells.left)
-    f:SetAttribute("*type2", "spell")
+    f:SetAttribute("*type2",  "spell")
     f:SetAttribute("*spell2", db.spells.right)
-    f:SetAttribute("*type3", "spell")
+    f:SetAttribute("*type3",  "spell")
     f:SetAttribute("*spell3", db.spells.middle)
 
-    -- 드래그로 이동 (비전투 + 잠금 해제 상태일 때)
-    f:SetMovable(true)
-    f:SetScript("OnMouseDown", function(self, btn)
-        if btn == "LeftButton" and not InCombatLockdown() and not CP.locked then
-            self:StartMoving()
-        end
-    end)
-    f:SetScript("OnMouseUp", function(self)
-        self:StopMovingOrSizing()
-        CP:SavePosition(unit, self)  -- 드래그 후 위치 저장
-    end)
-
-    -- ── 배경 ──
+    -- 배경
     local bg = f:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints()
     bg:SetColorTexture(0.05, 0.05, 0.05, 0.88)
 
-    -- ── 테두리 ──
+    -- 테두리
     local border = f:CreateTexture(nil, "BORDER")
     border:SetPoint("TOPLEFT",     f, "TOPLEFT",     -1,  1)
     border:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT",  1, -1)
     border:SetColorTexture(0.12, 0.12, 0.12, 1)
     border:SetDrawLayer("BORDER", -1)
 
-    -- ── 잠금 해제 표시 오버레이 (드래그 가능 상태일 때 주황 테두리) ──
-    local lockOverlay = f:CreateTexture(nil, "OVERLAY")
-    lockOverlay:SetPoint("TOPLEFT",     f, "TOPLEFT",     -2,  2)
-    lockOverlay:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT",  2, -2)
-    lockOverlay:SetColorTexture(1, 0.6, 0, 0.6)
-    lockOverlay:SetDrawLayer("OVERLAY", 7)
-    lockOverlay:Hide()
-    f.lockOverlay = lockOverlay
-
-    -- ── HP 바 ──
+    -- HP 바
     local hpBar = CreateFrame("StatusBar", nil, f)
     hpBar:SetPoint("TOPLEFT",  f, "TOPLEFT",   2, -2)
     hpBar:SetPoint("TOPRIGHT", f, "TOPRIGHT", -2, -2)
-    hpBar:SetHeight(24)
+    hpBar:SetHeight(db.height - 14)
     hpBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     hpBar:SetStatusBarColor(0.2, 0.8, 0.3)
     hpBar:SetMinMaxValues(0, 1)
     hpBar:SetValue(1)
     f.hpBar = hpBar
 
-    -- HP 바 배경
     local hpBg = hpBar:CreateTexture(nil, "BACKGROUND")
     hpBg:SetAllPoints()
     hpBg:SetColorTexture(0, 0, 0, 0.4)
 
-    -- 이름 텍스트 (HP 바 위)
     local nameText = hpBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    nameText:SetPoint("LEFT",  hpBar, "LEFT",  4, 0)
-    nameText:SetPoint("RIGHT", hpBar, "RIGHT", -22, 0)  -- 역할 아이콘 공간 확보
+    nameText:SetPoint("LEFT",  hpBar, "LEFT",   4,   0)
+    nameText:SetPoint("RIGHT", hpBar, "RIGHT", -22,  0)
     nameText:SetJustifyH("LEFT")
     nameText:SetWordWrap(false)
     f.nameText = nameText
 
-    -- HP 수치 텍스트
     local hpText = hpBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     hpText:SetPoint("RIGHT", hpBar, "RIGHT", -4, 0)
     hpText:SetJustifyH("RIGHT")
     f.hpText = hpText
 
-    -- ── 역할 아이콘 ──
+    -- 역할 아이콘
     local roleIcon = f:CreateTexture(nil, "OVERLAY")
-    roleIcon:SetSize(16, 16)
-    roleIcon:SetPoint("TOPRIGHT", hpBar, "TOPRIGHT", -2, -4)
+    roleIcon:SetSize(14, 14)
+    roleIcon:SetPoint("TOPRIGHT", hpBar, "TOPRIGHT", -2, -3)
     roleIcon:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-ROLES")
     roleIcon:Hide()
     f.roleIcon = roleIcon
 
-    -- ── MP/파워 바 ──
+    -- MP/파워 바
     local mpBar = CreateFrame("StatusBar", nil, f)
     mpBar:SetPoint("TOPLEFT",  hpBar, "BOTTOMLEFT",  0, -2)
     mpBar:SetPoint("TOPRIGHT", hpBar, "BOTTOMRIGHT", 0, -2)
-    mpBar:SetHeight(8)
+    mpBar:SetHeight(6)
     mpBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     mpBar:SetStatusBarColor(0.2, 0.4, 0.9)
     mpBar:SetMinMaxValues(0, 1)
@@ -116,10 +155,10 @@ local function CreateUnitFrame(unit)
     mpBg:SetAllPoints()
     mpBg:SetColorTexture(0, 0, 0, 0.4)
 
-    -- ── 사망/오프라인 오버레이 ──
+    -- 사망/오프라인 오버레이
     local deadOverlay = f:CreateTexture(nil, "OVERLAY")
-    deadOverlay:SetPoint("TOPLEFT",  hpBar, "TOPLEFT")
-    deadOverlay:SetPoint("BOTTOMRIGHT", mpBar, "BOTTOMRIGHT")
+    deadOverlay:SetPoint("TOPLEFT",     hpBar, "TOPLEFT")
+    deadOverlay:SetPoint("BOTTOMRIGHT", mpBar,  "BOTTOMRIGHT")
     deadOverlay:SetColorTexture(0, 0, 0, 0.65)
     deadOverlay:Hide()
     f.deadOverlay = deadOverlay
@@ -129,7 +168,7 @@ local function CreateUnitFrame(unit)
     deadText:Hide()
     f.deadText = deadText
 
-    -- ── 버프/디버프 영역 ──
+    -- 버프/디버프 영역
     local auraFrame = CreateFrame("Frame", nil, f)
     auraFrame:SetPoint("TOPLEFT",  mpBar, "BOTTOMLEFT",  0, -3)
     auraFrame:SetPoint("TOPRIGHT", mpBar, "BOTTOMRIGHT", 0, -3)
@@ -139,28 +178,46 @@ local function CreateUnitFrame(unit)
     f.buffIcons   = {}
     f.debuffIcons = {}
     f.unit = unit
-
     return f
 end
 
--- ─── 프레임 위치 정렬 ─────────────────────────────────────────────────────────
+-- ─── 레이아웃: 유닛 프레임 위치 정렬 ─────────────────────────────────────────
 function CP:LayoutFrames()
-    local db = self.db
+    local db   = self.db
+    local aura = db.auraSize + 6
+    local fh   = db.height + aura  -- 버프/디버프 포함 유닛 높이
+
+    -- 컨테이너 크기 재조정
+    local cw, ch = ContainerSize()
+    self.container:SetSize(cw, ch)
+
     for i, unit in ipairs(self.units) do
         local f = self.frames[unit]
-        if f then
-            f:ClearAllPoints()
-            f:SetPoint("TOPLEFT", UIParent, "TOPLEFT",
-                       db.anchorX,
-                       db.anchorY - (i - 1) * (db.height + db.padding))
+        if not f then goto continue end
+
+        f:SetSize(db.width, db.height)
+        f:ClearAllPoints()
+
+        if db.layout == "horizontal" then
+            -- 가로: 핸들 아래, 좌→우 정렬
+            local xOff = (i - 1) * (db.width + db.padding)
+            f:SetPoint("TOPLEFT", self.container, "TOPLEFT", xOff, -HANDLE_H)
+        else
+            -- 세로: 핸들 아래, 위→아래 정렬
+            local yOff = -HANDLE_H - (i - 1) * (fh + db.padding)
+            f:SetPoint("TOPLEFT", self.container, "TOPLEFT", 0, yOff)
         end
+
+        -- 핸들 너비를 컨테이너에 맞게
+        self.container.handle:SetPoint("TOPRIGHT", self.container, "TOPRIGHT", 0, 0)
+
+        ::continue::
     end
 end
 
 -- ─── 유닛 프레임 업데이트 ─────────────────────────────────────────────────────
 function CP:UpdateFrame(f)
     local unit = f.unit
-
     if not UnitExists(unit) then
         f:Hide()
         return
@@ -171,8 +228,6 @@ function CP:UpdateFrame(f)
     local isOffline = not UnitIsConnected(unit)
 
     -- HP
-    -- SetMinMaxValues/SetValue 는 Secret Value를 직접 받을 수 있음 (WoW 엔진이 내부 처리)
-    -- 산술/비교 연산이 필요한 곳은 Midnight 신규 API UnitHealthPercent() 사용 (비밀값 아님, 0~100)
     f.hpBar:SetMinMaxValues(0, UnitHealthMax(unit))
     f.hpBar:SetValue(UnitHealth(unit))
     local hpPct = (UnitHealthPercent(unit) or 100) / 100
@@ -183,7 +238,7 @@ function CP:UpdateFrame(f)
     if #name > 13 then name = name:sub(1, 12) .. "…" end
     f.nameText:SetText(name)
 
-    -- HP 수치 (Secret Value에 tostring/산술 불가 → 퍼센트로 표시)
+    -- HP 수치
     if isDead then
         f.hpText:SetText("사망")
         f.hpText:SetTextColor(0.9, 0.2, 0.2)
@@ -198,24 +253,18 @@ function CP:UpdateFrame(f)
     -- 사망/오프라인 오버레이
     if isDead or isOffline then
         f.deadOverlay:Show()
-        if isDead then
-            f.deadText:SetText("사 망")
-            f.deadText:SetTextColor(0.9, 0.2, 0.2)
-        else
-            f.deadText:SetText("오프라인")
-            f.deadText:SetTextColor(0.5, 0.5, 0.5)
-        end
+        f.deadText:SetText(isDead and "사 망" or "오프라인")
+        f.deadText:SetTextColor(isDead and 0.9 or 0.5, isDead and 0.2 or 0.5, isDead and 0.2 or 0.5)
         f.deadText:Show()
     else
         f.deadOverlay:Hide()
         f.deadText:Hide()
     end
 
-    -- MP/파워 (동일하게 Secret Value를 UI에 직접 전달, 비교 연산 제거)
+    -- MP/파워
     local powerTypeId = UnitPowerType(unit)
     f.mpBar:SetMinMaxValues(0, UnitPowerMax(unit, powerTypeId))
     f.mpBar:SetValue(UnitPower(unit, powerTypeId))
-
     local _, powerToken = UnitPowerType(unit)
     f.mpBar:SetStatusBarColor(self:PowerColor(powerToken))
 
@@ -229,11 +278,9 @@ function CP:UpdateFrame(f)
         f.roleIcon:Hide()
     end
 
-    -- 버프/디버프
     self:UpdateAuras(f)
 end
 
--- ─── 전체 업데이트 ────────────────────────────────────────────────────────────
 function CP:UpdateAll()
     for _, f in pairs(self.frames) do
         self:UpdateFrame(f)
@@ -242,28 +289,32 @@ end
 
 -- ─── 초기화 ───────────────────────────────────────────────────────────────────
 function CP:InitFrames()
-    -- 기본 파티 프레임 숨기기 (비전투 중에만 가능)
     if PartyFrame and not InCombatLockdown() then
         PartyFrame:Hide()
         PartyFrame:UnregisterAllEvents()
     end
 
+    -- 컨테이너 생성
+    if not self.container then
+        self.container = CreateContainer()
+    end
+
+    -- 유닛 프레임 생성
     for _, unit in ipairs(self.units) do
         if not self.frames[unit] then
             self.frames[unit] = CreateUnitFrame(unit)
         end
     end
 
-    -- 저장된 위치 복원, 없으면 기본 레이아웃
-    for _, unit in ipairs(self.units) do
-        local f = self.frames[unit]
-        if not self:LoadPosition(unit, f) then
-            self:LayoutFrames()
-            break
-        end
+    -- 레이아웃 적용
+    self:LayoutFrames()
+
+    -- 저장된 위치 복원
+    if not self:LoadContainerPos() then
+        self.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -200)
     end
 
-    -- 잠금 상태 반영
+    -- 잠금 상태 적용
     self:SetLocked(self.locked)
 
     self:UpdateAll()
