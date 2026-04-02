@@ -62,10 +62,12 @@ CP.locked    = false
 
 -- ─── 헬퍼 ────────────────────────────────────────────────────────────────────
 -- pct: 0~100 (UnitHealthPercent 반환값 그대로 사용 — Secret Value 산술 연산 금지)
+-- pct: UnitHealthPercent 반환값 (Midnight에서 0~1 소수)
+-- string.format("%.4f") 로 secret value → 일반 숫자 문자열 변환 후 비교
 function CP:HPColor(pct)
-    local val = tonumber(string.format("%d", pct)) or 100
-    if val > 60 then return unpack(self.colors.hp.high)
-    elseif val > 30 then return unpack(self.colors.hp.mid)
+    local val = tonumber(string.format("%.4f", pct)) or 1.0
+    if val > 0.6 then return unpack(self.colors.hp.high)
+    elseif val > 0.3 then return unpack(self.colors.hp.mid)
     else return unpack(self.colors.hp.low)
     end
 end

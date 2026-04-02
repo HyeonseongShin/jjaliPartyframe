@@ -225,15 +225,21 @@ function CP:UpdateFrame(f)
     local isDead    = UnitIsDeadOrGhost(unit)
     local isOffline = not UnitIsConnected(unit)
 
-    -- HP (Secret Value 대응: SetMinMaxValues 0~100, UnitHealthPercent 직접 사용)
-    local hpPct = UnitHealthPercent(unit) or 100
-    f.hpBar:SetMinMaxValues(0, 100)
-    f.hpBar:SetValue(hpPct)
-    f.hpBar:SetStatusBarColor(self:HPColor(hpPct))
+    -- HP (마나와 동일 패턴: 원시 secret value를 엔진에 직접 전달, 산술 연산 없음)
+    f.hpBar:SetMinMaxValues(0, UnitHealthMax(unit))
+    f.hpBar:SetValue(UnitHealth(unit))
+    f.hpBar:SetStatusBarColor(self:HPColor(UnitHealthPercent(unit)))
 
-    -- 이름
+    -- 이름 (UTF-8 문자 경계에서 자르기)
     local name = UnitName(unit) or unit
-    if #name > 13 then name = name:sub(1, 12) .. "…" end
+    if #name > 13 then
+        local cut = name:sub(1, 12)
+        -- 멀티바이트 문자 중간을 잘랐을 경우 뒤로 물러남 (continuation byte: 0x80~0xBF)
+        while #cut > 0 and cut:byte(#cut) >= 0x80 and cut:byte(#cut) <= 0xBF do
+            cut = cut:sub(1, #cut - 1)
+        end
+        name = cut .. "…"
+    end
     f.nameText:SetText(name)
 
     -- HP 수치
@@ -244,7 +250,8 @@ function CP:UpdateFrame(f)
         f.hpText:SetText("오프")
         f.hpText:SetTextColor(0.5, 0.5, 0.5)
     else
-        f.hpText:SetText(string.format("%d%%", UnitHealthPercent(unit) or 100))
+        local hpFrac = tonumber(string.format("%.4f", UnitHealthPercent(unit))) or 1.0
+        f.hpText:SetText(string.format("%d%%", math.floor(hpFrac * 100)))
         f.hpText:SetTextColor(1, 1, 1)
     end
 
