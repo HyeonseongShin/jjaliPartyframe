@@ -61,9 +61,10 @@ CP.container = nil
 CP.locked    = false
 
 -- ─── 헬퍼 ────────────────────────────────────────────────────────────────────
+-- pct: 0~100 (UnitHealthPercent 반환값 그대로 사용 — Secret Value 산술 연산 금지)
 function CP:HPColor(pct)
-    if pct > 0.6 then return unpack(self.colors.hp.high)
-    elseif pct > 0.3 then return unpack(self.colors.hp.mid)
+    if pct > 60 then return unpack(self.colors.hp.high)
+    elseif pct > 30 then return unpack(self.colors.hp.mid)
     else return unpack(self.colors.hp.low)
     end
 end

@@ -225,10 +225,10 @@ function CP:UpdateFrame(f)
     local isDead    = UnitIsDeadOrGhost(unit)
     local isOffline = not UnitIsConnected(unit)
 
-    -- HP
-    f.hpBar:SetMinMaxValues(0, UnitHealthMax(unit))
-    f.hpBar:SetValue(UnitHealth(unit))
-    local hpPct = (UnitHealthPercent(unit) or 100) / 100
+    -- HP (Secret Value 대응: SetMinMaxValues 0~100, UnitHealthPercent 직접 사용)
+    local hpPct = UnitHealthPercent(unit) or 100
+    f.hpBar:SetMinMaxValues(0, 100)
+    f.hpBar:SetValue(hpPct)
     f.hpBar:SetStatusBarColor(self:HPColor(hpPct))
 
     -- 이름
@@ -244,7 +244,7 @@ function CP:UpdateFrame(f)
         f.hpText:SetText("오프")
         f.hpText:SetTextColor(0.5, 0.5, 0.5)
     else
-        f.hpText:SetText(math.floor(UnitHealthPercent(unit) or 100) .. "%")
+        f.hpText:SetText(string.format("%d%%", UnitHealthPercent(unit) or 100))
         f.hpText:SetTextColor(1, 1, 1)
     end
 

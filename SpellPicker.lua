@@ -32,8 +32,10 @@ function SP:BuildSpellList()
     for lineIdx = 1, numLines do
         local lineInfo = C_SpellBook.GetSpellBookSkillLineInfo(lineIdx)
         if lineInfo then
+            -- Midnight API: 필드명이 numSpells → numSpellBookItems 로 변경됨
+            local count      = lineInfo.numSpellBookItems or lineInfo.numSpells or 0
             local slotStart  = lineInfo.itemIndexOffset + 1
-            local slotFinish = lineInfo.itemIndexOffset + lineInfo.numSpells
+            local slotFinish = lineInfo.itemIndexOffset + count
 
             for slotIdx = slotStart, slotFinish do
                 local itemInfo = C_SpellBook.GetSpellBookItemInfo(
