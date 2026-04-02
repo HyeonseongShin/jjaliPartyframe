@@ -9,8 +9,8 @@ CP.db = {
     width    = 200,
     height   = 62,
     padding  = 5,     -- 프레임 간 간격
-    anchorX  = -220,  -- UIParent 기준 X 오프셋
-    anchorY  = -200,  -- UIParent 기준 Y 오프셋
+    anchorX  = 20,    -- UIParent TOPLEFT 기준 X 오프셋 (양수 = 오른쪽)
+    anchorY  = -200,  -- UIParent TOPLEFT 기준 Y 오프셋 (음수 = 아래쪽)
 
     -- 클릭 힐 스펠 (본인 클래스에 맞게 수정)
     spells = {
@@ -73,6 +73,45 @@ end
 -- ─── 유닛 목록 ───────────────────────────────────────────────────────────────
 CP.units  = { "player", "party1", "party2", "party3", "party4" }
 CP.frames = {}  -- unit -> frame
+CP.locked = false  -- 프레임 잠금 상태
+
+-- ─── SavedVariables 초기화 ───────────────────────────────────────────────────
+function CP:InitDB()
+    if not jjaliPartyFrameDB then
+        jjaliPartyFrameDB = { locked = false, positions = {} }
+    end
+    self.locked = jjaliPartyFrameDB.locked
+end
+
+-- 현재 프레임 위치 저장
+function CP:SavePosition(unit, f)
+    local point, _, _, x, y = f:GetPoint()
+    jjaliPartyFrameDB.positions[unit] = { point = point, x = x, y = y }
+end
+
+-- 저장된 위치 불러오기
+function CP:LoadPosition(unit, f)
+    local pos = jjaliPartyFrameDB.positions[unit]
+    if pos then
+        f:ClearAllPoints()
+        f:SetPoint(pos.point, UIParent, pos.point, pos.x, pos.y)
+        return true
+    end
+    return false
+end
+
+-- 잠금 상태 토글
+function CP:SetLocked(locked)
+    self.locked = locked
+    jjaliPartyFrameDB.locked = locked
+    for _, f in pairs(self.frames) do
+        if f.lockOverlay then
+            f.lockOverlay:SetShown(not locked)
+        end
+    end
+    local state = locked and "|cffff4444잠금|r" or "|cff44ff44잠금 해제|r"
+    print("|cffff9900jjali's Party Frame:|r 프레임 " .. state)
+end
 
 -- ─── 이벤트 핸들러 ───────────────────────────────────────────────────────────
 local eventFrame = CreateFrame("Frame")
@@ -91,6 +130,7 @@ eventFrame:RegisterEvent("UNIT_AURA")
 
 eventFrame:SetScript("OnEvent", function(_, event, arg1)
     if event == "PLAYER_LOGIN" then
+        CP:InitDB()
         CP:InitFrames()
 
     elseif event == "GROUP_ROSTER_UPDATE"
@@ -111,10 +151,15 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
 end)
 
 -- ─── 슬래시 커맨드 ───────────────────────────────────────────────────────────
-SLASH_JJALIPARTY1 = "/jjali"
-SLASH_JJALIPARTY2 = "/jpf"
-SlashCmdList["JJALIPARTY"] = function(msg)
-    if msg == "reset" then
+SLASH_JJALIPARTYFRAME1 = "/jjali"
+SLASH_JJALIPARTYFRAME2 = "/jpf"
+SlashCmdList["JJALIPARTYFRAME"] = function(msg)
+    if msg == "lock" then
+        CP:SetLocked(true)
+    elseif msg == "unlock" then
+        CP:SetLocked(false)
+    elseif msg == "reset" then
+        jjaliPartyFrameDB.positions = {}
         for _, f in pairs(CP.frames) do
             f:ClearAllPoints()
         end
@@ -125,6 +170,8 @@ SlashCmdList["JJALIPARTY"] = function(msg)
         print("|cffff9900jjali's Party Frame:|r 프레임을 새로고침했습니다.")
     else
         print("|cffff9900jjali's Party Frame 명령어:|r")
+        print("  /jjali lock    - 프레임 위치 잠금")
+        print("  /jjali unlock  - 프레임 위치 잠금 해제 (드래그 가능)")
         print("  /jjali reset   - 프레임 위치 초기화")
         print("  /jjali reload  - 프레임 새로고침")
     end

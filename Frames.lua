@@ -30,15 +30,16 @@ local function CreateUnitFrame(unit)
     f:SetAttribute("*type3", "spell")
     f:SetAttribute("*spell3", db.spells.middle)
 
-    -- 드래그로 이동 (비전투 중)
+    -- 드래그로 이동 (비전투 + 잠금 해제 상태일 때)
     f:SetMovable(true)
     f:SetScript("OnMouseDown", function(self, btn)
-        if btn == "LeftButton" and not InCombatLockdown() then
+        if btn == "LeftButton" and not InCombatLockdown() and not CP.locked then
             self:StartMoving()
         end
     end)
     f:SetScript("OnMouseUp", function(self)
         self:StopMovingOrSizing()
+        CP:SavePosition(unit, self)  -- 드래그 후 위치 저장
     end)
 
     -- ── 배경 ──
@@ -52,6 +53,15 @@ local function CreateUnitFrame(unit)
     border:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT",  1, -1)
     border:SetColorTexture(0.12, 0.12, 0.12, 1)
     border:SetDrawLayer("BORDER", -1)
+
+    -- ── 잠금 해제 표시 오버레이 (드래그 가능 상태일 때 주황 테두리) ──
+    local lockOverlay = f:CreateTexture(nil, "OVERLAY")
+    lockOverlay:SetPoint("TOPLEFT",     f, "TOPLEFT",     -2,  2)
+    lockOverlay:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT",  2, -2)
+    lockOverlay:SetColorTexture(1, 0.6, 0, 0.6)
+    lockOverlay:SetDrawLayer("OVERLAY", 7)
+    lockOverlay:Hide()
+    f.lockOverlay = lockOverlay
 
     -- ── HP 바 ──
     local hpBar = CreateFrame("StatusBar", nil, f)
@@ -244,6 +254,17 @@ function CP:InitFrames()
         end
     end
 
-    self:LayoutFrames()
+    -- 저장된 위치 복원, 없으면 기본 레이아웃
+    for _, unit in ipairs(self.units) do
+        local f = self.frames[unit]
+        if not self:LoadPosition(unit, f) then
+            self:LayoutFrames()
+            break
+        end
+    end
+
+    -- 잠금 상태 반영
+    self:SetLocked(self.locked)
+
     self:UpdateAll()
 end

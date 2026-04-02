@@ -4,6 +4,7 @@
 ## Author: jjali
 ## Version: 1.0.0
 ## DefaultState: Enabled
+## SavedVariables: jjaliPartyFrameDB
 
 Core.lua
 Frames.lua
