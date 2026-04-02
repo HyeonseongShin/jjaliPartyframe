@@ -1,0 +1,10 @@
+## Interface: 120001
+## Title: jjali's Party Frame
+## Notes: jjali의 커스텀 파티 프레임 - HP/MP 바, 역할 아이콘, 버프/디버프, 클릭 힐
+## Author: jjali
+## Version: 1.0.0
+## DefaultState: Enabled
+
+Core.lua
+Frames.lua
+Buffs.lua
