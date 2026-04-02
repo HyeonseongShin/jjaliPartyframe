@@ -67,8 +67,7 @@ function CP:UpdateAuras(f)
             icon:SetPoint("TOPLEFT", f.auraFrame, "TOPLEFT",
                           (buffCount - 1) * (size + 1), 0)
             icon.tex:SetTexture(data.icon)
-            icon.count:SetText(data.applications and data.applications > 1
-                               and data.applications or "")
+            icon.count:SetText("")  -- applications 도 secret number라 비교 불가
             icon:Show()
         end
     end
@@ -92,8 +91,7 @@ function CP:UpdateAuras(f)
             icon:SetPoint("TOPLEFT", f.auraFrame, "TOPLEFT",
                           offsetX + (debuffCount - 1) * (size + 2), 0)
             icon.tex:SetTexture(data.icon)
-            icon.count:SetText(data.applications and data.applications > 1
-                               and data.applications or "")
+            icon.count:SetText("")  -- applications 도 secret number라 비교 불가
 
             -- 디버프 종류별 테두리 색상
             if icon.border then

@@ -226,12 +226,17 @@ function CP:UpdateFrame(f)
     local isOffline = not UnitIsConnected(unit)
 
     -- HP: raw secret value → SetValue (엔진이 내부 float으로 변환)
-    --     GetValue/GetMinMaxValues 는 일반 Lua 숫자 반환 → 산술 가능
+    --     GetValue/GetMinMaxValues 가 secret number 를 반환할 경우 산술 에러로
+    --     함수가 abort 되므로 pcall 로 감싸 안전하게 처리
     f.hpBar:SetMinMaxValues(0, UnitHealthMax(unit))
     f.hpBar:SetValue(UnitHealth(unit))
-    local barCur        = f.hpBar:GetValue()
-    local _, barMax     = f.hpBar:GetMinMaxValues()
-    local hpPct         = (barMax and barMax > 0) and (barCur / barMax) or 0
+    local hpPct = 1.0
+    local ok, result = pcall(function()
+        local cur = f.hpBar:GetValue()
+        local _, max = f.hpBar:GetMinMaxValues()
+        return (max and max > 0) and (cur / max) or 1.0
+    end)
+    if ok then hpPct = result end
     f.hpBar:SetStatusBarColor(self:HPColor(hpPct))
 
     -- 이름 (UTF-8 문자 경계에서 자르기)
