@@ -33,16 +33,6 @@ local function MakeDivider(parent, yRef)
     return line
 end
 
--- ─── 헬퍼: EditBox ───────────────────────────────────────────────────────────
-local function MakeEditBox(parent, w, text)
-    local eb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
-    eb:SetSize(w, 22)
-    eb:SetAutoFocus(false)
-    eb:SetMaxLetters(50)
-    eb:SetText(text or "")
-    eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    return eb
-end
 
 -- ─── 패널 생성 ────────────────────────────────────────────────────────────────
 function OPT:Build()
@@ -148,48 +138,58 @@ function OPT:Build()
     MakeDivider(panel, y); y = y - 14
     local spellLabel = MakeLabel(panel, "클릭 힐 스펠", 11)
     spellLabel:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, y)
-    y = y - 22
+    y = y - 26
 
-    local spellDefs = {
+    local SLOT_DEFS = {
         { key = "left",   label = "왼쪽 클릭" },
         { key = "right",  label = "오른쪽 클릭" },
-        { key = "middle", label = "미들 클릭" },
+        { key = "middle", label = "미들 클릭"   },
     }
-    self.spellBoxes = {}
+    self.spellSlots = {}
 
-    for _, def in ipairs(spellDefs) do
+    for _, def in ipairs(SLOT_DEFS) do
+        -- 슬롯 라벨
         local lbl = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         lbl:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, y)
         lbl:SetText(def.label)
         lbl:SetTextColor(0.8, 0.8, 0.8)
 
-        local eb = MakeEditBox(panel, 170, CP.db.spells[def.key])
-        eb:SetPoint("TOPLEFT", panel, "TOPLEFT", 110, y + 3)
+        -- 스펠 아이콘
+        local iconFrame = CreateFrame("Frame", nil, panel)
+        iconFrame:SetSize(20, 20)
+        iconFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", 96, y + 1)
+        local iconTex = iconFrame:CreateTexture(nil, "ARTWORK")
+        iconTex:SetAllPoints()
+        iconTex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
-        local applyKey = def.key
-        eb:SetScript("OnEnterPressed", function(self)
-            self:ClearFocus()
-            CP.db.spells[applyKey] = self:GetText()
-            CP:SaveDB()
-            -- 모든 프레임에 어트리뷰트 즉시 반영 (비전투 중만 가능)
-            if not InCombatLockdown() then
-                for _, f in pairs(CP.frames) do
-                    if applyKey == "left"   then f:SetAttribute("*spell1", self:GetText()) end
-                    if applyKey == "right"  then f:SetAttribute("*spell2", self:GetText()) end
-                    if applyKey == "middle" then f:SetAttribute("*spell3", self:GetText()) end
-                end
-            end
+        -- 현재 스펠 이름
+        local nameLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        nameLabel:SetPoint("LEFT",  iconFrame, "RIGHT", 4,   0)
+        nameLabel:SetPoint("RIGHT", panel,     "RIGHT", -70, y)
+        nameLabel:SetJustifyH("LEFT")
+        nameLabel:SetWordWrap(false)
+        nameLabel:SetTextColor(1, 1, 1)
+
+        -- 변경 버튼 → SpellPicker 열기
+        local slotKey   = def.key
+        local changeBtn = MakeButton(panel, 56, 20, "변경", nil)
+        changeBtn:SetPoint("RIGHT", panel, "RIGHT", -12, y + 10)
+        changeBtn:SetScript("OnClick", function(self)
+            CP.SpellPicker:Open(slotKey, self, function(slot, spellName)
+                CP:AssignSpell(slot, spellName)
+                OPT:RefreshSpellSlots()
+            end)
         end)
 
-        self.spellBoxes[def.key] = eb
-        y = y - 28
+        self.spellSlots[def.key] = { icon = iconTex, name = nameLabel }
+        y = y - 30
     end
 
-    local spellHint = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    spellHint:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, y)
-    spellHint:SetText("Enter를 눌러 적용합니다.")
-    spellHint:SetTextColor(0.5, 0.5, 0.5)
-    y = y - 30
+    local combatHint = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    combatHint:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, y)
+    combatHint:SetText("스펠북에서 직접 선택합니다. 전투 중 변경 불가.")
+    combatHint:SetTextColor(0.5, 0.5, 0.5)
+    y = y - 26
 
     -- ════════════════════════════════
     -- 섹션: 표시 설정
@@ -254,10 +254,14 @@ function OPT:RefreshLockButtons()
     self.btnUnlock:SetEnabled(CP.locked)
 end
 
-function OPT:RefreshSpellBoxes()
-    if not self.spellBoxes then return end
-    for key, eb in pairs(self.spellBoxes) do
-        eb:SetText(CP.db.spells[key] or "")
+-- 스펠 슬롯 UI 갱신 (아이콘 + 이름)
+function OPT:RefreshSpellSlots()
+    if not self.spellSlots then return end
+    for key, slot in pairs(self.spellSlots) do
+        local spellName = CP.db.spells[key]
+        slot.name:SetText(spellName or "없음")
+        local icon = CP.SpellPicker:GetIconForSpell(spellName or "")
+        slot.icon:SetTexture(icon)
     end
 end
 
@@ -270,7 +274,7 @@ function OPT:Toggle()
     else
         self:RefreshLayoutButtons()
         self:RefreshLockButtons()
-        self:RefreshSpellBoxes()
+        self:RefreshSpellSlots()
         self.panel:Show()
     end
 end

@@ -102,6 +102,18 @@ function CP:SaveDB()
     for k, v in pairs(self.db.spells) do sv.spells[k] = v end
 end
 
+-- 스펠 할당: 저장 + 프레임 어트리뷰트 즉시 반영 (비전투 중만)
+local SPELL_ATTR = { left = "*spell1", right = "*spell2", middle = "*spell3" }
+function CP:AssignSpell(slot, spellName)
+    self.db.spells[slot] = spellName
+    self:SaveDB()
+    if not InCombatLockdown() then
+        for _, f in pairs(self.frames) do
+            f:SetAttribute(SPELL_ATTR[slot], spellName)
+        end
+    end
+end
+
 function CP:SaveContainerPos()
     if not self.container then return end
     local point, _, _, x, y = self.container:GetPoint()

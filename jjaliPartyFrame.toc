@@ -9,4 +9,5 @@
 Core.lua
 Frames.lua
 Buffs.lua
+SpellPicker.lua
 Options.lua

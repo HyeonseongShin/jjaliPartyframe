@@ -193,25 +193,23 @@ function CP:LayoutFrames()
 
     for i, unit in ipairs(self.units) do
         local f = self.frames[unit]
-        if not f then goto continue end
+        if f then
+            f:SetSize(db.width, db.height)
+            f:ClearAllPoints()
 
-        f:SetSize(db.width, db.height)
-        f:ClearAllPoints()
+            if db.layout == "horizontal" then
+                -- 가로: 핸들 아래, 좌→우 정렬
+                local xOff = (i - 1) * (db.width + db.padding)
+                f:SetPoint("TOPLEFT", self.container, "TOPLEFT", xOff, -HANDLE_H)
+            else
+                -- 세로: 핸들 아래, 위→아래 정렬
+                local yOff = -HANDLE_H - (i - 1) * (fh + db.padding)
+                f:SetPoint("TOPLEFT", self.container, "TOPLEFT", 0, yOff)
+            end
 
-        if db.layout == "horizontal" then
-            -- 가로: 핸들 아래, 좌→우 정렬
-            local xOff = (i - 1) * (db.width + db.padding)
-            f:SetPoint("TOPLEFT", self.container, "TOPLEFT", xOff, -HANDLE_H)
-        else
-            -- 세로: 핸들 아래, 위→아래 정렬
-            local yOff = -HANDLE_H - (i - 1) * (fh + db.padding)
-            f:SetPoint("TOPLEFT", self.container, "TOPLEFT", 0, yOff)
+            -- 핸들 너비를 컨테이너에 맞게
+            self.container.handle:SetPoint("TOPRIGHT", self.container, "TOPRIGHT", 0, 0)
         end
-
-        -- 핸들 너비를 컨테이너에 맞게
-        self.container.handle:SetPoint("TOPRIGHT", self.container, "TOPRIGHT", 0, 0)
-
-        ::continue::
     end
 end
 
