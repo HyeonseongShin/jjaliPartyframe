@@ -38,7 +38,7 @@ end
 function OPT:Build()
     local panel = CreateFrame("Frame", "jjaliPartyFrameOptions", UIParent,
                               "BackdropTemplate")
-    panel:SetSize(320, 460)
+    panel:SetSize(320, 560)
     panel:SetPoint("CENTER")
     panel:SetFrameStrata("DIALOG")
     panel:SetMovable(true)
@@ -237,6 +237,84 @@ function OPT:Build()
         function(v) CP.db.maxDebuffs = v; CP:SaveDB() end,
         1, 8)
 
+    y = y - 32
+
+    -- ════════════════════════════════
+    -- 섹션: 프레임 크기
+    -- ════════════════════════════════
+    MakeDivider(panel, y); y = y - 14
+    local sizeLabel = MakeLabel(panel, "프레임 크기", 11)
+    sizeLabel:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, y)
+    y = y - 28
+
+    -- 너비
+    local wLbl = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    wLbl:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, y)
+    wLbl:SetText("너비")
+    wLbl:SetTextColor(0.8, 0.8, 0.8)
+
+    local wBox = CreateFrame("EditBox", nil, panel, "InputBoxTemplate")
+    wBox:SetSize(46, 20)
+    wBox:SetPoint("TOPLEFT", panel, "TOPLEFT", 46, y + 2)
+    wBox:SetMaxLetters(4)
+    wBox:SetAutoFocus(false)
+    wBox:SetText(tostring(CP.db.width))
+
+    local wPxLbl = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    wPxLbl:SetPoint("LEFT", wBox, "RIGHT", 3, 0)
+    wPxLbl:SetText("px")
+    wPxLbl:SetTextColor(0.6, 0.6, 0.6)
+
+    -- 높이
+    local hLbl = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    hLbl:SetPoint("TOPLEFT", panel, "TOPLEFT", 114, y)
+    hLbl:SetText("높이")
+    hLbl:SetTextColor(0.8, 0.8, 0.8)
+
+    local hBox = CreateFrame("EditBox", nil, panel, "InputBoxTemplate")
+    hBox:SetSize(46, 20)
+    hBox:SetPoint("TOPLEFT", panel, "TOPLEFT", 144, y + 2)
+    hBox:SetMaxLetters(3)
+    hBox:SetAutoFocus(false)
+    hBox:SetText(tostring(CP.db.height))
+
+    local hPxLbl = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    hPxLbl:SetPoint("LEFT", hBox, "RIGHT", 3, 0)
+    hPxLbl:SetText("px")
+    hPxLbl:SetTextColor(0.6, 0.6, 0.6)
+
+    -- 적용 버튼
+    local function ApplySize()
+        if InCombatLockdown() then
+            print("|cffff9900jjali's Party Frame:|r 전투 중에는 크기를 변경할 수 없습니다.")
+            return
+        end
+        local w = tonumber(wBox:GetText())
+        local h = tonumber(hBox:GetText())
+        if not w or not h or w < 80 or w > 500 or h < 20 or h > 200 then
+            print("|cffff9900jjali's Party Frame:|r 유효하지 않은 값입니다. (너비 80~500, 높이 20~200)")
+            return
+        end
+        CP.db.width  = w
+        CP.db.height = h
+        CP:SaveDB()
+        CP:ApplyFrameSize()
+    end
+
+    local applyBtn = MakeButton(panel, 56, 22, "적용", ApplySize)
+    applyBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", 208, y)
+
+    wBox:SetScript("OnEnterPressed", ApplySize)
+    hBox:SetScript("OnEnterPressed", ApplySize)
+    y = y - 30
+
+    local sizeHint = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    sizeHint:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, y)
+    sizeHint:SetText("비전투 상태에서만 적용됩니다. (너비 80~500, 높이 20~200)")
+    sizeHint:SetTextColor(0.5, 0.5, 0.5)
+
+    self.wBox = wBox
+    self.hBox = hBox
     self.panel = panel
 end
 
@@ -265,6 +343,11 @@ function OPT:RefreshSpellSlots()
     end
 end
 
+function OPT:RefreshSizeInputs()
+    if self.wBox then self.wBox:SetText(tostring(CP.db.width))  end
+    if self.hBox then self.hBox:SetText(tostring(CP.db.height)) end
+end
+
 -- ─── 열기/닫기 ────────────────────────────────────────────────────────────────
 function OPT:Toggle()
     if not self.panel then self:Build() end
@@ -275,6 +358,7 @@ function OPT:Toggle()
         self:RefreshLayoutButtons()
         self:RefreshLockButtons()
         self:RefreshSpellSlots()
+        self:RefreshSizeInputs()
         self.panel:Show()
     end
 end

@@ -213,6 +213,15 @@ function CP:LayoutFrames()
     end
 end
 
+-- ─── 프레임 크기 적용 ────────────────────────────────────────────────────────
+function CP:ApplyFrameSize()
+    local db = self.db
+    for _, f in pairs(self.frames) do
+        f.hpBar:SetHeight(db.height - 14)
+    end
+    self:LayoutFrames()
+end
+
 -- ─── 유닛 프레임 업데이트 ─────────────────────────────────────────────────────
 function CP:UpdateFrame(f)
     local unit = f.unit
