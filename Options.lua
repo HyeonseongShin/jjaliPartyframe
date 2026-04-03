@@ -115,7 +115,7 @@ function OPT:Build()
     end)
     btnLock:SetPoint("TOPLEFT", panel, "TOPLEFT", 112, y)
 
-    local btnReset = MakeButton(panel, 88, 26, "↺  초기화", function()
+    local btnReset = MakeButton(panel, 88, 26, "초기화", function()
         jjaliPartyFrameDB.position = nil
         CP.container:ClearAllPoints()
         CP.container:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -200)
