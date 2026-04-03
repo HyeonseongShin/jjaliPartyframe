@@ -77,6 +77,7 @@ local isLongBuff = ok and result or false
 ```
 
 **Known secret values with no decoded API (as of 12.0.0):**
+- `AuraData.sourceUnit` — secret string; `== "player"` comparison requires pcall
 - `AuraData.duration` / `expirationTime` — use pcall for comparisons
 - `AuraData.applications` — cannot be displayed; set count text to `""`
 - `UnitPower` / `UnitPowerMax` — pass directly to `SetMinMaxValues`/`SetValue`

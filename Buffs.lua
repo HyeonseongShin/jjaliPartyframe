@@ -54,7 +54,9 @@ function CP:UpdateAuras(f)
         if not data then break end
         i = i + 1
 
-        local isPlayerCast  = data.sourceUnit == "player"
+        local isPlayerCast = false
+        local ok, res = pcall(function() return data.sourceUnit == "player" end)
+        if ok then isPlayerCast = res end
         local isWhitelisted = CP.db.buffWhitelist[data.spellId] == true
         local isBlacklisted = CP.db.buffBlacklist[data.spellId] == true
 
