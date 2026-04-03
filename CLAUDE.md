@@ -34,7 +34,7 @@ jjaliPartyFrame (global) / CP (local alias)
 
 **Container pattern:** All 5 unit frames are children of a single container frame with a 16px drag handle at the top (orange = unlocked, dark gray = locked). Layout (vertical/horizontal) and position are saved via `jjaliPartyFrameDB`.
 
-**Click-heal:** Each unit frame uses `SecureActionButtonTemplate`. Spells are assigned via `*spell1/2/3` attributes (left/right/middle click). SpellPicker reads the live spellbook so spell names are always in the client language (Korean).
+**Click-heal:** Each unit frame uses `SecureActionButtonTemplate`. Click actions use `*type1/2/3 = "macro"` + `*macrotext1/2/3 = "/cast [@unit] SpellName"` for explicit unit targeting (left/right/middle click). `type="spell"` + `unit` attribute does NOT reliably target in WoW Midnight — always use macro syntax. SpellPicker reads the live spellbook so spell names are always in the client language (Korean).
 
 ## Critical Constraints
 
@@ -85,11 +85,11 @@ local isLongBuff = ok and result or false
 ### SecureActionButtonTemplate (Combat Lockdown)
 ```lua
 -- ❌ BANNED during combat
-f:SetAttribute("*spell1", spellName)
+f:SetAttribute("*macrotext1", "/cast [@party1] 재성장")
 
--- ✅ Always guard spell assignment
+-- ✅ Always guard attribute changes
 if not InCombatLockdown() then
-    f:SetAttribute("*spell1", spellName)
+    f:SetAttribute("*macrotext1", "/cast [@" .. f.unit .. "] " .. spellName)
 end
 ```
 

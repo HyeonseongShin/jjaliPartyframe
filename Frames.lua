@@ -84,14 +84,14 @@ local function CreateUnitFrame(unit)
     f:SetFrameStrata("MEDIUM")
     f:RegisterForClicks("AnyUp")
 
-    -- 클릭 힐
-    f:SetAttribute("unit",    unit)
-    f:SetAttribute("*type1",  "spell")
-    f:SetAttribute("*spell1", db.spells.left)
-    f:SetAttribute("*type2",  "spell")
-    f:SetAttribute("*spell2", db.spells.right)
-    f:SetAttribute("*type3",  "spell")
-    f:SetAttribute("*spell3", db.spells.middle)
+    -- 클릭 힐 ([@unit] 매크로로 명시적 타겟 지정)
+    f:SetAttribute("unit",          unit)
+    f:SetAttribute("*type1",        "macro")
+    f:SetAttribute("*macrotext1",   "/cast [@" .. unit .. "] " .. db.spells.left)
+    f:SetAttribute("*type2",        "macro")
+    f:SetAttribute("*macrotext2",   "/cast [@" .. unit .. "] " .. db.spells.right)
+    f:SetAttribute("*type3",        "macro")
+    f:SetAttribute("*macrotext3",   "/cast [@" .. unit .. "] " .. db.spells.middle)
 
     -- 배경
     local bg = f:CreateTexture(nil, "BACKGROUND")

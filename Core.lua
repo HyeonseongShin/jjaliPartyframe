@@ -117,14 +117,16 @@ function CP:SaveDB()
     for k, v in pairs(self.db.buffBlacklist) do sv.buffBlacklist[k] = v end
 end
 
--- 스펠 할당: 저장 + 프레임 어트리뷰트 즉시 반영 (비전투 중만)
-local SPELL_ATTR = { left = "*spell1", right = "*spell2", middle = "*spell3" }
+-- 스펠 할당: 저장 + 프레임 매크로텍스트 즉시 반영 (비전투 중만)
+local MACRO_BTN = { left = "1", right = "2", middle = "3" }
 function CP:AssignSpell(slot, spellName)
     self.db.spells[slot] = spellName
     self:SaveDB()
     if not InCombatLockdown() then
+        local btn = MACRO_BTN[slot]
         for _, f in pairs(self.frames) do
-            f:SetAttribute(SPELL_ATTR[slot], spellName)
+            f:SetAttribute("*macrotext" .. btn,
+                "/cast [@" .. f.unit .. "] " .. spellName)
         end
     end
 end
