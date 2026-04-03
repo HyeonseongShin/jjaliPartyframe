@@ -162,18 +162,18 @@ function OPT:Build()
         iconTex:SetAllPoints()
         iconTex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
+        -- 변경 버튼 → SpellPicker 열기 (TOPLEFT 기준으로 배치)
+        local slotKey   = def.key
+        local changeBtn = MakeButton(panel, 56, 20, "변경", nil)
+        changeBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", 252, y - 2)
+
         -- 현재 스펠 이름
         local nameLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nameLabel:SetPoint("LEFT",  iconFrame, "RIGHT", 4,   0)
-        nameLabel:SetPoint("RIGHT", panel,     "RIGHT", -70, y)
+        nameLabel:SetPoint("LEFT",  iconFrame, "RIGHT", 4, 0)
+        nameLabel:SetPoint("RIGHT", changeBtn, "LEFT", -4, 0)
         nameLabel:SetJustifyH("LEFT")
         nameLabel:SetWordWrap(false)
         nameLabel:SetTextColor(1, 1, 1)
-
-        -- 변경 버튼 → SpellPicker 열기
-        local slotKey   = def.key
-        local changeBtn = MakeButton(panel, 56, 20, "변경", nil)
-        changeBtn:SetPoint("RIGHT", panel, "RIGHT", -12, y + 10)
         changeBtn:SetScript("OnClick", function(self)
             CP.SpellPicker:Open(slotKey, self, function(slot, spellName)
                 CP:AssignSpell(slot, spellName)
