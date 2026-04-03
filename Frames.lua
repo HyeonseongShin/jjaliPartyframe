@@ -242,15 +242,18 @@ function CP:UpdateFrame(f)
         f.hpBar:SetStatusBarColor(self:HPColor(hpPct))
     end
 
-    -- 이름 (UTF-8 문자 경계에서 자르기)
+    -- 이름 (UTF-8 문자 경계에서 자르기) — 앞에서부터 완전한 문자 단위로 수집
     local name = UnitName(unit) or unit
     if #name > 13 then
-        local cut = name:sub(1, 12)
-        -- 멀티바이트 문자 중간을 잘랐을 경우 뒤로 물러남 (continuation byte: 0x80~0xBF)
-        while #cut > 0 and cut:byte(#cut) >= 0x80 and cut:byte(#cut) <= 0xBF do
-            cut = cut:sub(1, #cut - 1)
+        local pos, last = 1, 0
+        while pos <= #name do
+            local b = name:byte(pos)
+            local len = (b >= 0xF0) and 4 or (b >= 0xE0) and 3 or (b >= 0xC0) and 2 or 1
+            if pos + len - 1 > 12 then break end
+            last = pos + len - 1
+            pos = pos + len
         end
-        name = cut .. "…"
+        name = name:sub(1, last) .. "…"
     end
     f.nameText:SetText(name)
 
