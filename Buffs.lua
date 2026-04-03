@@ -45,7 +45,7 @@ function CP:UpdateAuras(f)
     local size   = db.auraSize
 
     -- ── 버프 ──
-    -- 5분(300초) 초과 또는 영구(duration==0) 버프는 전투 중에만 표시
+    -- 전투 중: 내가 시전한 버프 또는 화이트리스트만 표시 / 블랙리스트는 항상 숨김
     local inCombat = UnitAffectingCombat("player")
     local buffCount = 0
     local i = 1
@@ -54,14 +54,12 @@ function CP:UpdateAuras(f)
         if not data then break end
         i = i + 1
 
-        -- data.duration 도 secret number 일 수 있어 > 비교가 에러를 냄
-        -- pcall 로 감싸고, 실패 시 짧은 버프로 간주하여 항상 표시
-        local isLongBuff = false
-        local ok, res = pcall(function()
-            return data.duration == 0 or data.duration > 300
-        end)
-        if ok then isLongBuff = res end
-        if data.icon and (not inCombat or not isLongBuff) then
+        local isPlayerCast  = data.sourceUnit == "player"
+        local isWhitelisted = CP.db.buffWhitelist[data.spellId] == true
+        local isBlacklisted = CP.db.buffBlacklist[data.spellId] == true
+
+        if data.icon and not isBlacklisted
+            and (not inCombat or isPlayerCast or isWhitelisted) then
             buffCount = buffCount + 1
             local icon = GetIcon(f.auraFrame, f.buffIcons, buffCount, false)
             icon:SetPoint("TOPLEFT", f.auraFrame, "TOPLEFT",

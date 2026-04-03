@@ -8,7 +8,7 @@ WoW Midnight (Interface 120001) custom party frame addon. Restoration Druid-focu
 
 **Installation:** Copy folder to `World of Warcraft/_retail_/Interface/AddOns/jjaliPartyFrame/`, then `/reload` in-game.
 
-**In-game slash commands:** `/jjali` or `/jpf` → `reset` | `reload`
+**In-game slash commands:** `/jjali` or `/jpf` → `lock` | `unlock` | `reset` (no argument opens options panel)
 
 ## File Load Order
 
@@ -42,23 +42,44 @@ jjaliPartyFrame (global) / CP (local alias)
 WoW runs Lua 5.1. `goto` / `::label::` are **banned** (Lua 5.2+ only). Use `if x then ... end` blocks instead.
 
 ### Midnight Secret Value System
-HP/Power values returned by `UnitHealth()` / `UnitPower()` are opaque "secret numbers" during combat — Lua arithmetic on them throws a runtime error.
+Many values returned by WoW APIs (`UnitHealth`, `UnitPower`, `UnitHealthMax`, aura `duration`, `applications`, etc.) are opaque "secret numbers" — Lua arithmetic **and comparisons** on them throw a runtime error.
+
+**API-first principle:** Before writing pcall workarounds, check [warcraft.wiki.gg](https://warcraft.wiki.gg) for an official API that returns a regular number directly. Patch 12.0.0 added several such APIs.
 
 ```lua
--- ❌ BANNED
+-- ❌ BANNED (arithmetic and comparisons on secret values)
 local pct = UnitHealth(unit) / UnitHealthMax(unit)
-math.floor(UnitHealthPercent(unit))
+if data.duration > 300 then ...
+data.applications > 1
 
--- ✅ CORRECT
-f.hpBar:SetMinMaxValues(0, 100)
-f.hpBar:SetValue(UnitHealthPercent(unit))   -- 0~100, not arithmetic
-string.format("%d%%", UnitHealthPercent(unit))  -- display
+-- ✅ PREFERRED: use official APIs that return regular numbers
+-- HP% for text display (Patch 12.0.0+) — returns regular 0~100 float
+local hpPct100 = UnitHealthPercent(unit, true, CurveConstants.ScaleTo100)
+f.hpText:SetFormattedText("%d%%", hpPct100)
+-- CurveConstants.ScaleTo100: curve object that scales the result to 0~100
 
--- HPColor thresholds use 0~100 scale (not 0~1)
--- high: > 60,  mid: > 30,  low: <= 30
+-- ✅ CORRECT: HP bar — pass raw secret values to WoW engine (engine decodes internally)
+f.hpBar:SetMinMaxValues(0, UnitHealthMax(unit))
+f.hpBar:SetValue(UnitHealth(unit))
+
+-- ✅ CORRECT: read back as regular Lua numbers via GetValue/GetMinMaxValues
+local cur = f.hpBar:GetValue()
+local _, max = f.hpBar:GetMinMaxValues()
+local hpPct = (max and max > 0) and (cur / max) or 0
+-- hpPct is 0~1 float — used for HPColor()
+
+-- ✅ FALLBACK: pcall for secret values with no official decoded API
+local ok, result = pcall(function() return data.duration == 0 or data.duration > 300 end)
+local isLongBuff = ok and result or false
+
+-- HPColor receives 0~1 float (result of GetValue/GetMinMaxValues division)
+-- high: > 0.6,  mid: > 0.3,  low: <= 0.3
 ```
 
-`SetMinMaxValues` / `SetValue` accept raw secret values directly — the WoW engine handles them internally without Lua arithmetic.
+**Known secret values with no decoded API (as of 12.0.0):**
+- `AuraData.duration` / `expirationTime` — use pcall for comparisons
+- `AuraData.applications` — cannot be displayed; set count text to `""`
+- `UnitPower` / `UnitPowerMax` — pass directly to `SetMinMaxValues`/`SetValue`
 
 ### SecureActionButtonTemplate (Combat Lockdown)
 ```lua
@@ -98,6 +119,21 @@ Default spells: `left=재성장`, `right=재생`, `middle=치유의 손길`. Spe
 | Default auraSize | 16px |
 | TOC Interface | `120001` |
 | Addon identifier | `jjaliPartyFrame` (lowercase-first, never change) |
+| HP bar range | `SetMinMaxValues(0, UnitHealthMax)` + `SetValue(UnitHealth)` — raw secret values |
+| HP% text | `UnitHealthPercent(unit, true, CurveConstants.ScaleTo100)` → 0~100 regular float |
+| HPColor input | 0~1 float (from `GetValue()/GetMinMaxValues()`) |
+| API reference | https://warcraft.wiki.gg |
+
+## Skills
+
+프로젝트 루트 `.skill/` 디렉토리에 작업 보조 스킬이 있습니다. 해당 상황이 되면 반드시 사용하세요.
+
+| 파일 | 사용 시점 |
+|------|-----------|
+| `context-archiving.skill` | 유저가 "컨텍스트 저장", "새 세션용 요약" 등을 요청할 때 — 해당 파일의 포맷을 따라 출력 |
+| `knowledge_output.md` | 컨텍스트 요약 출력의 템플릿 구조 참고용 |
+
+> `clean-code.skill`, `system-design.skill` 은 ZIP 포맷으로 현재 직접 읽기 불가. 내용 확인 후 추가 예정.
 
 ## Debugging (In-Game)
 

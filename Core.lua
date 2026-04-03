@@ -21,6 +21,9 @@ CP.db = {
     maxBuffs   = 6,
     maxDebuffs = 3,
     auraSize   = 16,
+
+    buffWhitelist = {},  -- [spellId] = true : 전투 중에도 항상 표시
+    buffBlacklist = {},  -- [spellId] = true : 항상 숨김 (전투/비전투 무관)
 }
 
 -- ─── 색상 정의 ────────────────────────────────────────────────────────────────
@@ -90,6 +93,12 @@ function CP:InitDB()
     if sv.spells then
         for k, v in pairs(sv.spells) do self.db.spells[k] = v end
     end
+    if sv.buffWhitelist then
+        for k, v in pairs(sv.buffWhitelist) do self.db.buffWhitelist[k] = v end
+    end
+    if sv.buffBlacklist then
+        for k, v in pairs(sv.buffBlacklist) do self.db.buffBlacklist[k] = v end
+    end
 end
 
 function CP:SaveDB()
@@ -102,6 +111,10 @@ function CP:SaveDB()
     sv.maxDebuffs = self.db.maxDebuffs
     sv.spells     = {}
     for k, v in pairs(self.db.spells) do sv.spells[k] = v end
+    sv.buffWhitelist = {}
+    for k, v in pairs(self.db.buffWhitelist) do sv.buffWhitelist[k] = v end
+    sv.buffBlacklist = {}
+    for k, v in pairs(self.db.buffBlacklist) do sv.buffBlacklist[k] = v end
 end
 
 -- 스펠 할당: 저장 + 프레임 어트리뷰트 즉시 반영 (비전투 중만)
