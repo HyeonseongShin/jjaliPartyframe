@@ -197,9 +197,11 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
     if event == "PLAYER_LOGIN" then
         CP:InitDB()
         CP:InitFrames()
+        CP:SortUnitsByRole()
     elseif event == "GROUP_ROSTER_UPDATE"
         or event == "PLAYER_ROLES_ASSIGNED"
         or event == "ROLE_CHANGED_INFORM" then
+        CP:SortUnitsByRole()
         CP:UpdateAll()
     elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
         -- 전투 상태 변화 → 5분 초과 버프 표시 여부 갱신

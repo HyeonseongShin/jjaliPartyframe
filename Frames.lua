@@ -213,6 +213,24 @@ function CP:LayoutFrames()
     end
 end
 
+-- ─── 역할 순서 정렬 ──────────────────────────────────────────────────────────
+local ROLE_ORDER = { TANK = 1, HEALER = 2, DAMAGER = 3 }
+
+function CP:SortUnitsByRole()
+    local all = { "player", "party1", "party2", "party3", "party4" }
+    table.sort(all, function(a, b)
+        local aExists = UnitExists(a)
+        local bExists = UnitExists(b)
+        if aExists and not bExists then return true  end
+        if not aExists and bExists then return false end
+        local ra = ROLE_ORDER[UnitGroupRolesAssigned(a)] or 4
+        local rb = ROLE_ORDER[UnitGroupRolesAssigned(b)] or 4
+        return ra < rb
+    end)
+    self.units = all
+    self:LayoutFrames()
+end
+
 -- ─── 프레임 크기 적용 ────────────────────────────────────────────────────────
 function CP:ApplyFrameSize()
     local db = self.db
