@@ -45,23 +45,18 @@ function CP:UpdateAuras(f)
     local size   = db.auraSize
 
     -- ── 버프 ──
-    -- 전투 중: 내가 시전한 버프 또는 화이트리스트만 표시 / 블랙리스트는 항상 숨김
-    local inCombat = UnitAffectingCombat("player")
+    -- "HELPFUL|PLAYER" 필터: 플레이어가 직접 시전한 버프만 반환 (평판 버프 등 외부 버프 제외)
+    -- 블랙리스트에 있는 버프는 숨김
     local buffCount = 0
     local i = 1
     while buffCount < db.maxBuffs do
-        local data = C_UnitAuras.GetBuffDataByIndex(unit, i)
+        local data = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL|PLAYER")
         if not data then break end
         i = i + 1
 
-        local isPlayerCast = false
-        local ok, res = pcall(function() return data.sourceUnit == "player" end)
-        if ok then isPlayerCast = res end
-        local isWhitelisted = CP.db.buffWhitelist[data.spellId] == true
         local isBlacklisted = CP.db.buffBlacklist[data.spellId] == true
 
-        if data.icon and not isBlacklisted
-            and (not inCombat or isPlayerCast or isWhitelisted) then
+        if data.icon and not isBlacklisted then
             buffCount = buffCount + 1
             local icon = GetIcon(f.auraFrame, f.buffIcons, buffCount, false)
             icon:SetPoint("TOPLEFT", f.auraFrame, "TOPLEFT",
